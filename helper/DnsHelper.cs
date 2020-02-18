@@ -13,21 +13,29 @@ namespace RockClimber.Azure.Helpers
         private string ResourceGroupName { get; set; }
         private string ZoneName { get; set; }
 
-        public DnsHelper(ServiceClientCredentials credentials, string resourceGroupName, string zoneName)
+        public DnsHelper(ServiceClientCredentials credentials,string SubscriptionID, string resourceGroupName, string zoneName)
         {
             ResourceGroupName = resourceGroupName;
             ZoneName = zoneName;
-            init(credentials);
+            init(credentials, SubscriptionID);
         }
-        private void init(ServiceClientCredentials credentials)
+        private void init(ServiceClientCredentials credentials, string SubscriptionID)
         {
             dnsManagementClient = new DnsManagementClient(credentials);
-            Zone dnsZone = dnsManagementClient.Zones.Get(ResourceGroupName, ZoneName);
+            dnsManagementClient.SubscriptionId = SubscriptionID;
+            IZonesOperations zones = dnsManagementClient.Zones;
+            dnsZone = zones.Get(ResourceGroupName, ZoneName);
         }
 
         public async Task<IPage<RecordSet>> RecordSet()
         {
             IPage<RecordSet> recordSet = await dnsManagementClient.RecordSets.ListAllByDnsZoneAsync(ResourceGroupName, ZoneName);
+            return recordSet;
+        }
+
+        public async Task<RecordSet> RecordSet(string recordSetName, RecordType recordType)
+        {
+            RecordSet recordSet = await dnsManagementClient.RecordSets.GetAsync(ResourceGroupName, ZoneName, recordSetName, recordType);
             return recordSet;
         }
     }

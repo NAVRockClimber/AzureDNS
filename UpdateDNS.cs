@@ -10,10 +10,12 @@ using Newtonsoft.Json;
 using System.Collections.Generic;
 using Microsoft.Extensions.Primitives;
 using RockClimber.Azure.Helpers;
-
+using Microsoft.Azure.Management.Dns.Models;
+using Microsoft.Rest.Azure;
 
 namespace AzureDNSUpdater
 {
+    enum UpdateType { A, AAAA}
     public static class UpdateDNS
     {
         [FunctionName("UpdateDNS")]
@@ -27,9 +29,25 @@ namespace AzureDNSUpdater
             }
 
             CredentialHelper credentialHelper = new CredentialHelper();
-            var serviceClientCredentials = credentialHelper.GetAzureCredentials();
+            var serviceClientCredentials = await credentialHelper.GetAzureCredentials();
+            string SubscriptionID = Environment.GetEnvironmentVariable("SubscriptionID", EnvironmentVariableTarget.Process);
 
-            string name = req.Query["name"];
+            string resourceGroupName = req.Query["ResourceGroupName"];
+            string zoneName = req.Query["ZoneName"];
+            DnsHelper dnsHelper = null;
+            try { 
+                dnsHelper = new DnsHelper(serviceClientCredentials, SubscriptionID, resourceGroupName, zoneName);
+            } 
+            catch (Exception e)
+            { 
+                log.LogError(e.Message, e.StackTrace);
+            }
+
+            RecordSet recordSet = await dnsHelper.RecordSet(Hostname, RecordType.A);
+            string name = string.Empty;
+            if (recordSet != null) {  
+                name += recordSet.Name;
+            }
 
             string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
             dynamic data = JsonConvert.DeserializeObject(requestBody);
@@ -42,7 +60,7 @@ namespace AzureDNSUpdater
 
         private static bool CheckParameters(IQueryCollection parameters)
         {
-            if (!(parameters.ContainsKey("hostname")))
+            if (!(parameters.ContainsKey("Hostname")))
             {
                 return false;
             }
@@ -51,6 +69,9 @@ namespace AzureDNSUpdater
                 return false;
             }
 
+            if (!parameters.ContainsKey("ResourceGroupName")) return false;
+
+            if (!parameters.ContainsKey("ZoneName")) return false;
             return true;
         }
 
