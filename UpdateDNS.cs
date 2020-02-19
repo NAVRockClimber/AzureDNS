@@ -15,7 +15,6 @@ using Microsoft.Rest.Azure;
 
 namespace AzureDNSUpdater
 {
-    enum UpdateType { A, AAAA}
     public static class UpdateDNS
     {
         [FunctionName("UpdateDNS")]
@@ -23,57 +22,47 @@ namespace AzureDNSUpdater
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
             ILogger log)
         {
-            if (!CheckParameters(req.Query))
+            ParameterChecker parameterChecker = new ParameterChecker(req.Query);
+            if (!parameterChecker.ConfigIsValid)
             {
                 return new BadRequestResult();
             }
+            IMode mode = parameterChecker.Mode;
 
             CredentialHelper credentialHelper = new CredentialHelper();
             var serviceClientCredentials = await credentialHelper.GetAzureCredentials();
             string SubscriptionID = Environment.GetEnvironmentVariable("SubscriptionID", EnvironmentVariableTarget.Process);
 
             string resourceGroupName = req.Query["ResourceGroupName"];
-            string zoneName = req.Query["ZoneName"];
             DnsHelper dnsHelper = null;
-            try { 
-                dnsHelper = new DnsHelper(serviceClientCredentials, SubscriptionID, resourceGroupName, zoneName);
-            } 
+            try
+            {
+                dnsHelper = new DnsHelper(serviceClientCredentials, SubscriptionID, resourceGroupName, mode.Zone);
+            }
             catch (Exception e)
-            { 
+            {
                 log.LogError(e.Message, e.StackTrace);
             }
 
-            RecordSet recordSet = await dnsHelper.RecordSet(Hostname, RecordType.A);
-            string name = string.Empty;
-            if (recordSet != null) {  
-                name += recordSet.Name;
+            IPage<RecordSet> recordSets = await dnsHelper.RecordSet();
+            bool recordExists = false;
+            foreach (RecordSet recordSet in recordSets)
+            {
+                if (recordSet.Name.Equals(mode.Hostname))
+                {
+                    recordExists = true;
+                }
             }
 
-            string requestBody = await new StreamReader(req.Body).ReadToEndAsync();
-            dynamic data = JsonConvert.DeserializeObject(requestBody);
-            name = name ?? data?.name;
+            RecordSet newRecordSet = null;
+            if ((!recordExists) && mode.AutoCreateZone)
+            {
+                newRecordSet = await dnsHelper.CreateZone(mode);
+            }
 
-            return name != null
-                ? (ActionResult)new OkObjectResult($"Hello, {name}")
+            return newRecordSet != null
+                ? (ActionResult)new OkObjectResult($"{newRecordSet.ToString()}")
                 : new BadRequestObjectResult("Please pass a name on the query string or in the request body");
         }
-
-        private static bool CheckParameters(IQueryCollection parameters)
-        {
-            if (!(parameters.ContainsKey("Hostname")))
-            {
-                return false;
-            }
-            if (!(parameters.ContainsKey("A") || parameters.ContainsKey("AAAA")))
-            {
-                return false;
-            }
-
-            if (!parameters.ContainsKey("ResourceGroupName")) return false;
-
-            if (!parameters.ContainsKey("ZoneName")) return false;
-            return true;
-        }
-
     }
 }
