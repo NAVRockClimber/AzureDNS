@@ -44,25 +44,44 @@ namespace AzureDNSUpdater
                 log.LogError(e.Message, e.StackTrace);
             }
 
-            IPage<RecordSet> recordSets = await dnsHelper.RecordSet();
-            bool recordExists = false;
-            foreach (RecordSet recordSet in recordSets)
-            {
-                if (recordSet.Name.Equals(mode.Hostname))
-                {
-                    recordExists = true;
-                }
-            }
+            bool recordExists = await dnsHelper.RecordExists(mode);
 
             RecordSet newRecordSet = null;
             if ((!recordExists) && mode.AutoCreateZone)
             {
-                newRecordSet = await dnsHelper.CreateZone(mode);
+                try
+                {
+                    newRecordSet = await dnsHelper.CreateZone(mode);
+                }
+                catch (Exception e)
+                {
+                    return (ActionResult)new BadRequestObjectResult(e.Message);
+                }
             }
 
-            return newRecordSet != null
-                ? (ActionResult)new OkObjectResult($"{newRecordSet.ToString()}")
-                : new BadRequestObjectResult("Please pass a name on the query string or in the request body");
+            string answer = string.Empty;
+            bool zoneIsUpToDate = await dnsHelper.ZoneIsUpToDate(mode.Hostname, mode.Type, mode.Address);
+            if (!zoneIsUpToDate)
+            {
+                try
+                {
+                    newRecordSet = await dnsHelper.UpdateZone(mode);
+                }
+                catch (Exception e)
+                {
+                    return (ActionResult)new BadRequestObjectResult(e.Message);
+                }
+            }
+
+            if (newRecordSet != null)
+            {
+                answer = JsonConvert.SerializeObject(newRecordSet);
+                return (ActionResult)new OkObjectResult($"{answer}");
+            }
+            else
+            {
+                return (ActionResult)new OkResult();
+            }
         }
     }
 }
