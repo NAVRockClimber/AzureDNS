@@ -2,8 +2,19 @@
     "version": "2.0",
     "logging": {
         "fileLoggingMode": "always",
-        "console": {
-            "isEnabled": true
+        "LogLevel": {
+            "Default": "Debug"
+        },
+        "Debug": {
+            "LogLevel": {
+                "Default": "Information"
+            }
+        },
+        "Console": {
+            "isEnabled": true,
+            "LogLevel": {
+                "Default": "Information"
+            }
         }
     }
 }
