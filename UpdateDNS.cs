@@ -12,6 +12,8 @@ using Microsoft.Extensions.Primitives;
 using RockClimber.Azure.Helpers;
 using Microsoft.Azure.Management.Dns.Models;
 using Microsoft.Rest.Azure;
+using System.Linq;
+using Microsoft.AspNetCore.Http.Headers;
 
 namespace AzureDNSUpdater
 {
@@ -22,6 +24,7 @@ namespace AzureDNSUpdater
             [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = null)] HttpRequest req,
             ILogger log)
         {
+            log.LogInformation("Up and Running!");
             ParameterChecker parameterChecker = new ParameterChecker(req.Query);
             if (!parameterChecker.ConfigIsValid)
             {
@@ -29,6 +32,7 @@ namespace AzureDNSUpdater
             }
             IMode mode = parameterChecker.Mode;
 
+            log.LogInformation("Initialize Credential Helper");
             CredentialHelper credentialHelper = new CredentialHelper();
             var serviceClientCredentials = await credentialHelper.GetAzureCredentials();
             string SubscriptionID = Environment.GetEnvironmentVariable("SubscriptionID", EnvironmentVariableTarget.Process);
