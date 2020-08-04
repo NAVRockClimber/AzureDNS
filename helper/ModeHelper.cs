@@ -1,26 +1,30 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.Management.Dns.Models;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace RockClimber.Azure.Helpers
 {
-    public class ParameterChecker
+    public class ModeHelper
     {
         IQueryCollection parameters;
+        IHeaderDictionary headers;
         IMode mode;
-        bool configIsValid;
-        public ParameterChecker(IQueryCollection Parameters)
+        
+        public ModeHelper(IQueryCollection Parameters, IHeaderDictionary Headers)
         {
             parameters = Parameters;
-            configIsValid = TestParameters();
-            if (configIsValid)
-            {
-                mode = getMode();
-            }
+            headers = Headers;
+            mode = getMode();
         }
-
         private IMode getMode()
         {
             IMode mode = null;
+            if (parameters.ContainsKey("DetectARecord"))
+            {
+                mode = new IpV4Mode();
+                mode.Address = headers["X-Forwarded-For"].FirstOrDefault().Split(new char[] { ':' }).FirstOrDefault();
+            }
             if (parameters.ContainsKey("A"))
             {
                 mode = new IpV4Mode();
@@ -44,37 +48,9 @@ namespace RockClimber.Azure.Helpers
                 mode.Hostname = parameters["Hostname"];
             }
             return mode;
-        }
-
-        private bool TestParameters()
-        {
-            if (!(parameters.ContainsKey("Hostname")))
-            {
-                return false;
-            }
-            if (!(parameters.ContainsKey("A") ^ parameters.ContainsKey("AAAA")))
-            {
-                return false;
-            }
-
-            if (!parameters.ContainsKey("ResourceGroupName")) return false;
-
-            if (!parameters.ContainsKey("ZoneName")) return false;
-
-            if (parameters.ContainsKey("AutoCreate"))
-            {
-                bool evaluateBuffer;
-                if (!bool.TryParse(parameters["AutoCreate"], out evaluateBuffer))
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
+        }   
 
         public IMode Mode { get => mode; }
-
-        public bool ConfigIsValid { get => configIsValid; }
     }
     public interface IMode
     {

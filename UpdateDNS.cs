@@ -14,6 +14,7 @@ using Microsoft.Azure.Management.Dns.Models;
 using Microsoft.Rest.Azure;
 using System.Linq;
 using Microsoft.AspNetCore.Http.Headers;
+using AzureDNSUpdater.helper;
 
 namespace AzureDNSUpdater
 {
@@ -26,11 +27,12 @@ namespace AzureDNSUpdater
         {
             log.LogInformation("Up and Running!");
             ParameterChecker parameterChecker = new ParameterChecker(req.Query);
-            if (!parameterChecker.ConfigIsValid)
+            if (!parameterChecker.IsValidConfig)
             {
                 return new BadRequestResult();
             }
-            IMode mode = parameterChecker.Mode;
+            ModeHelper modeHelper = new ModeHelper(req.Query, req.Headers);
+            IMode mode = modeHelper.Mode;
 
             log.LogInformation("Initialize Credential Helper");
             CredentialHelper credentialHelper = new CredentialHelper();
