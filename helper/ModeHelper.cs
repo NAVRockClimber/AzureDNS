@@ -20,7 +20,7 @@ namespace RockClimber.Azure.Helpers
         private IMode getMode()
         {
             IMode mode = null;
-            if (parameters.ContainsKey("DetectARecord"))
+            if (parameters.ContainsKey("AutoDetect"))
             {
                 mode = new IpV4Mode();
                 mode.Address = headers["X-Forwarded-For"].FirstOrDefault().Split(new char[] { ':' }).FirstOrDefault();
