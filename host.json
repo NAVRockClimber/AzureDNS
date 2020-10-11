@@ -1,19 +1,21 @@
 {
     "version": "2.0",
     "logging": {
-        "fileLoggingMode": "always",
-        "LogLevel": {
-            "Default": "Debug"
-        },
-        "Debug": {
-            "LogLevel": {
-                "Default": "Information"
-            }
-        },
-        "Console": {
-            "isEnabled": true,
-            "LogLevel": {
-                "Default": "Information"
+        "applicationInsights": {
+            "samplingSettings": {
+                "isEnabled": true,
+                "initialSamplingPercentage": 0.0,
+                "minSamplingPercentage": 0.0,
+                "maxSamplingPercentage": 0.0,
+                "excludedTypes": "Event;Exception"
+            },
+            "enableLiveMetrics": false,
+            "enableDependencyTracking": false,
+            "enablePerformanceCountersCollection": false,
+            "httpAutoCollectionOptions": {
+                "enableHttpTriggerExtendedInfoCollection": false,
+                "enableW3CDistributedTracing": false,
+                "enableResponseHeaderInjection": false
             }
         }
     }
